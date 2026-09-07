@@ -1,10 +1,19 @@
-# Local, machine-specific configuration. Copy to firmware/local.conf and fill
-# in your own values, then build with:
+# Local, machine-specific configuration. Copy to firmware/local.conf, fill in
+# your own values, then build with:
 #
 #   west build -b nrf9161dk/nrf9161/ns -p always firmware -- -DEXTRA_CONF_FILE=local.conf
 #
 # local.conf is git-ignored on purpose: it holds identifiers specific to your
 # AWS account and your SIM.
+
+# AWS IoT Core endpoint of your account. Find it with:
+#   aws iot describe-endpoint --endpoint-type iot:Data-ATS
+CONFIG_AWS_IOT_BROKER_HOST_NAME="xxxxxxxxxxxxxx-ats.iot.eu-west-3.amazonaws.com"
+
+# Name of the AWS IoT thing. It is also the <deviceId> of the MQTT topics
+# (bike/<deviceId>/status, .../telemetry, .../cmd, .../alert) and must match
+# EBIKE_DEVICE on the cloud side.
+CONFIG_AWS_IOT_CLIENT_ID_STATIC="ebike-001"
 
 # APN of your LTE-M SIM. Leave empty to let the network supply it.
 CONFIG_EBIKE_APN=""

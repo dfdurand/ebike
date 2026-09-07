@@ -2,6 +2,176 @@
 
 mainmenu "eBike firmware"
 
+# === AWS IoT cloud link ======================================================
+
+config EBIKE_PROVISION_CERTS
+	bool "Provision the AWS certificates into the modem at boot"
+	default y
+	depends on MODEM_KEY_MGMT
+	help
+	  Embeds the root CA, device certificate and private key (PEM files
+	  from firmware/certs/, not versioned) in the image and writes them
+	  into the modem under CONFIG_MQTT_HELPER_SEC_TAG at startup, only when
+	  missing or different. Development only: the credentials are then
+	  readable in the flash image. Disable in production and provision out
+	  of band.
+
+config EBIKE_PROVISION_FORCE
+	bool "Rewrite the AWS credentials even when already present"
+	default n
+	depends on EBIKE_PROVISION_CERTS
+	help
+	  The private key, and on some modem firmware the device certificate,
+	  cannot be read back (AT error 514): only their existence can be
+	  checked, never their contents. The boot therefore keeps whatever is
+	  already stored in the modem.
+
+	  Enable this to rotate them: the credentials are rewritten at every
+	  boot whatever is stored. Turn it back off once the new PEM files are
+	  in, otherwise every boot writes to the modem NVM for nothing.
+
+config EBIKE_PUBLISH_PARKED_S
+	int "Publish interval while parked (seconds)"
+	default 600
+	range 30 86400
+	help
+	  Interval between MQTT publications when the bike is stationary. A
+	  reduced rate means fewer LTE wake-ups (PSM becomes possible) and less
+	  cellular data. Theft alerts still leave immediately, outside the
+	  cycle.
+
+config EBIKE_TRANSITION_DEBOUNCE_S
+	int "Debounce of transition publications (seconds)"
+	default 20
+	range 0 300
+	help
+	  A state transition triggers an immediate publication. Within this
+	  delay of the previous one it is postponed instead of sent right away:
+	  four transitions in 105 s once produced eight off-cycle publications
+	  and left the GNSS without an RF window for minutes. 0 disables it.
+
+config EBIKE_SHADOW_REPORT_MIN_S
+	int "Minimum interval between two shadow reports (seconds)"
+	default 30
+	range 0 3600
+	help
+	  Same idea as the debounce above, applied to `shadow/update`: a report
+	  too close to the previous one is held back and leaves with the next
+	  publication. The reported state stays correct, it just arrives
+	  grouped.
+
+config EBIKE_SHADOW_POLL_S
+	int "Periodic Device Shadow re-read (seconds, 0 = disabled)"
+	default 300
+	range 0 86400
+	help
+	  The device publishes a `shadow/get` at this rate, during a
+	  publication cycle. A shadow delta is a DOWNLINK message, and with PSM
+	  the bike is only reachable in the short window following its own
+	  transmissions, so a command can otherwise wait several minutes. A
+	  `get` is a PULL: the answer comes back while the RRC connection is
+	  still open, which bounds the wait to this period. Cost: get/accepted
+	  returns the full document with metadata, about 1 KB.
+
+config EBIKE_PARK_TIMEOUT_S
+	int "Stillness delay before entering PARKED (seconds)"
+	default 120
+	range 10 3600
+	help
+	  Time with no movement at all (neither wheel pulse nor IMU motion)
+	  after which the state machine goes from RIDING to PARKED. Avoids
+	  flipping states at a red light.
+
+config EBIKE_ALERT_QUEUE_SIZE
+	int "Depth of the alert queue"
+	default 8
+	range 1 32
+	help
+	  Alerts are published off-cycle and used to be simply LOST when the
+	  MQTT link was down. They now all go through this queue, drained on
+	  the cloud workqueue — sent immediately when the link is up, replayed
+	  on reconnection otherwise, carrying their age (`age_s`) so the e-mail
+	  dates them correctly.
+
+	  The queue is not only an offline buffer: it also moves the TLS send
+	  out of the emitter's context. A geofence alert is raised by a zbus
+	  listener running in the SYSTEM workqueue, where publishing MQTT
+	  blocked GNSS frame processing and the speed ticker.
+
+	  When full, the OLDEST is overwritten: in a burst of geofence
+	  reminders the most recent ones describe better where the bike is.
+
+config EBIKE_BACKLOG_BATCHES_PER_CYCLE
+	int "Catch-up batches sent per publication cycle"
+	default 4
+	range 1 32
+	help
+	  The trace buffer is drained in batches of 16 points. This bounds how
+	  many batches leave per cycle: flushing 20 minutes of backlog at once
+	  would hold the radio for tens of seconds and starve the GNSS.
+
+	  FLOOR: the drain must exceed steady-state PRODUCTION, otherwise the
+	  buffer grows until saturation. Production per cycle = publish rate /
+	  sampling rate, so 12 points while riding and 10 while parked. One
+	  batch is therefore enough in both states, and this bound only affects
+	  catch-up after an outage, which was its original intent.
+
+config EBIKE_CLOUD_BACKOFF_MIN_S
+	int "Initial cloud reconnection delay (seconds)"
+	default 5
+	range 1 3600
+	help
+	  First delay before retrying a broker connection after a failure.
+	  Doubled on each failure up to EBIKE_CLOUD_BACKOFF_MAX_S, and reset to
+	  this value as soon as a connection succeeds.
+
+config EBIKE_CLOUD_BACKOFF_MAX_S
+	int "Maximum cloud reconnection delay (seconds)"
+	default 300
+	range 10 86400
+	help
+	  Cap of the exponential backoff. Retrying every 30 s forever burns
+	  energy for nothing in a prolonged dead zone, since each attempt wakes
+	  the radio. A jitter of +/-25% keeps the attempts from resynchronising
+	  onto the publication cycle.
+
+config EBIKE_CLOUD_MAX_CONNECT_FAILURES
+	int "Consecutive connection failures before restarting (0 = never)"
+	default 10
+	range 0 100
+	help
+	  Beyond this many CONSECUTIVE aws_iot_connect() failures, the board
+	  restarts.
+
+	  WHY THIS LAST RESORT. After an abrupt RF loss, every reconnection can
+	  fail with -ENOMEM — the signature of a TLS socket never released on
+	  the modem side, whose pool is then exhausted. The bike goes mute for
+	  good, retrying a call that can no longer succeed, and there is no
+	  clean way to force the cleanup: mqtt_helper_disconnect() requires the
+	  CONNECTED state. Only a reboot recovers the resource.
+
+	  WHAT IT DOES NOT TRIGGER: a plain dead zone. Without LTE attached the
+	  firmware does not even ATTEMPT a connection, so the counter only
+	  advances when the network is there and the broker stays unreachable
+	  — the genuinely abnormal case.
+
+	  COST: the RAM trace buffer is lost on reboot. Acceptable, because by
+	  the time the threshold is reached the link has been dead longer than
+	  the buffer depth anyway. The restart is traceable: `boot` = "warm N"
+	  with an empty `crash`, and `reset` = "software".
+
+config EBIKE_CLOUD_STACK_SIZE
+	int "Cloud workqueue stack (bytes)"
+	default 4096
+	range 2048 16384
+	help
+	  connect_work (DNS plus TLS handshake) and publish_work (JSON build
+	  plus send) run on this DEDICATED workqueue rather than the system
+	  one, for two reasons: a slow TLS handshake used to block GNSS PVT
+	  processing behind it, and the watchdog can now watch the system
+	  workqueue with a tight timeout without risking a spurious reboot
+	  during a legitimately slow reconnection.
+
 # === Cellular connectivity ===================================================
 
 config EBIKE_APN
