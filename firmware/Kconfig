@@ -76,6 +76,95 @@ config EBIKE_SPEED_STOP_TIMEOUT_S
 	  With no pulse for this long the speed drops to zero. 3 s means the
 	  lowest detectable speed is around 2.5 km/h with a 2.1 m wheel.
 
+# === GNSS ====================================================================
+
+config EBIKE_GNSS_FIX_INTERVAL
+	int "Interval between GNSS fixes (seconds, 1 = continuous)"
+	default 1
+	range 1 65535
+	help
+	  Passed to nrf_modem_gnss_fix_interval_set(). 1 means continuous
+	  navigation (one PVT per second, instant re-fix in every free RF
+	  window), which is what the batched sampling below expects. Values
+	  between 2 and 9 are rejected by the modem.
+
+config EBIKE_GNSS_FIX_RETRY
+	int "Maximum duration of one fix attempt (seconds, 0 = unlimited)"
+	default 0
+	help
+	  Time allowed to each periodic fix attempt. 0 lets the receiver search
+	  without limit, which is what a cold start needs to download
+	  ephemerides.
+
+config EBIKE_TELEMETRY_SAMPLE_S
+	int "Position sampling period (seconds)"
+	default 5
+	range 1 60
+	help
+	  Rate at which the last valid GNSS position is appended to the trace
+	  buffer (only when a new fix arrived since the previous sample). The
+	  buffer is drained and published as one grouped MQTT message per
+	  supervision cycle.
+
+config EBIKE_TELEMETRY_SAMPLE_PARKED_S
+	int "Position sampling period while parked (seconds)"
+	default 60
+	range 1 3600
+	help
+	  Replaces EBIKE_TELEMETRY_SAMPLE_S in the PARKED state only; RIDING
+	  and ALARM keep the fine rate.
+
+	  A parked bike has not moved for EBIKE_PARK_TIMEOUT_S by construction,
+	  so recording its position every 5 s produced 120 identical points per
+	  cycle that then had to be flushed as eight consecutive MQTT messages.
+	  The backlog catch-up, designed for outages, had become the permanent
+	  regime of parking. At 60 s a parked cycle holds ten points and one
+	  batch, with no functional loss: any movement switches back to RIDING
+	  (or ALARM) and restores the fine rate immediately.
+
+config EBIKE_TRACE_RING_SIZE
+	int "Capacity of the GNSS trace buffer (samples)"
+	default 240
+	range 16 2048
+	help
+	  Position samples kept in RAM between two successful publications.
+	  OFFLINE this is the depth of saved history: beyond it the oldest
+	  points are overwritten and lost. Coverage = size x current sampling
+	  rate, so 240 samples hold 20 min while riding and 4 h while parked.
+	  Cost: 32 bytes per sample, 7.5 KB of RAM at the default size.
+
+config EBIKE_GNSS_MAX_ACC_M
+	int "Horizontal accuracy above which a fix is rejected (metres)"
+	default 150
+	range 20 10000
+	help
+	  Guard against clearly bad solutions: a fix less precise than this is
+	  ignored entirely (no trace, no geofence, no last known fix).
+	  Deliberately wide — the point is to reject garbage, not to filter on
+	  quality. In continuous navigation, rejecting a fix costs nothing.
+
+config EBIKE_GNSS_MAX_SPEED_KMH
+	int "GNSS speed above which the fix speed is ignored (km/h)"
+	default 60
+	range 10 500
+	help
+	  The modem instantaneous Doppler speed is noisy at low speed and can
+	  report several times the real value on an otherwise well located fix.
+	  Above this threshold the speed is marked UNKNOWN (the `spd` field is
+	  omitted from the point) while the POSITION is kept, since that is
+	  what carries the trace.
+
+config EBIKE_GNSS_MAX_SPEED_ACC_KMH
+	int "Tolerated speed uncertainty (km/h, 0 = filter disabled)"
+	default 0
+	range 0 200
+	help
+	  Complementary statistical filter based on `speed_accuracy`, the
+	  1-sigma figure the modem attaches to every PVT. DISABLED by default
+	  on purpose: calibrating it blind risks discarding nearly every speed.
+	  The status publishes the observed uncertainty (`sacc`, in 0.1 km/h)
+	  so the threshold can be set from real data.
+
 # === IMU =====================================================================
 
 config EBIKE_IMU_POLL_MS
