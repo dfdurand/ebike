@@ -2,6 +2,23 @@
 
 mainmenu "eBike firmware"
 
+# === Cellular connectivity ===================================================
+
+config EBIKE_APN
+	string "SIM APN (empty = APN supplied by the network)"
+	default ""
+	help
+	  Access Point Name forced on the default PDP context (CID 0). Leave
+	  empty to let the network provide it, which is what most LTE-M IoT
+	  SIMs expect. Requires CONFIG_LTE_LC_PDN_MODULE=y.
+
+config EBIKE_PDN_IPV4_ONLY
+	bool "Request an IPv4-only default PDP context"
+	default n
+	help
+	  Diagnostic fallback: ask for IPv4 instead of IPv4v6, as some visited
+	  networks reject the IPV4V6 type. No effect when EBIKE_APN is empty.
+
 # === Shared runtime defaults (carried on CH_CONFIG) ==========================
 
 config EBIKE_PUBLISH_RIDING_S
