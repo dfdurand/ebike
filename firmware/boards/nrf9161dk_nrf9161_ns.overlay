@@ -11,14 +11,26 @@
  * sensors on the shield (HTS221, LPS25HB, LIS3MDL) are unused, and declaring
  * them would enable their drivers for nothing. Address 0x6b: SA0 tied to VDD
  * by the shield default.
+ *
+ * Wheel speed sensor (reed/Hall, one magnet): D2 = P0.02, the only pin left
+ * free on the DK (LEDs, buttons and UARTs take the rest) that the IKS01A*
+ * shields never use as an interrupt. Wiring: reed switch between D2 and GND
+ * on the shield through-holes, internal pull-up, pulse = edge to ground.
  */
 
 #include <samples/cellular/nrf91_no_bootloader_partitions.dtsi>
 #include <samples/cellular/nrf91_sram_partitions.dtsi>
+#include <zephyr/dt-bindings/gpio/arduino-header-r3.h>
 
 / {
 	aliases {
 		accel0 = &lsm6ds0;
+	};
+
+	speed_sensor: speed-sensor {
+		compatible = "ebike,speed-sensor";
+		gpios = <&arduino_header ARDUINO_HEADER_R3_D2
+			 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
 	};
 };
 

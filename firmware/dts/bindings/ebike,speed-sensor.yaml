@@ -1,0 +1,14 @@
+# Wheel speed sensor: a reed or Hall switch and one magnet on the wheel, giving
+# one interrupt per turn on a GPIO.
+
+description: Wheel speed sensor (reed/Hall, one pulse per turn)
+
+compatible: "ebike,speed-sensor"
+
+properties:
+  gpios:
+    type: phandle-array
+    required: true
+    description: |
+      Sensor GPIO. Devicetree flags carry pull and polarity, for example
+      GPIO_PULL_UP | GPIO_ACTIVE_LOW for a reed switch wired to ground.

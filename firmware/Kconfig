@@ -48,6 +48,34 @@ config EBIKE_GEOFENCE_RADIUS_M
 	  Allowed radius around the home point. A value pushed through the
 	  Device Shadow and persisted in NVS takes precedence.
 
+# === Wheel speed sensor ======================================================
+
+config EBIKE_WHEEL_CIRC_MM
+	int "Default wheel circumference (millimetres)"
+	default 2200
+	range 500 4000
+	help
+	  Circumference of the wheel carrying the magnet (26" is about 2075 mm,
+	  700C/28" 2100-2250 mm depending on the tyre). A value persisted in
+	  NVS takes precedence.
+
+config EBIKE_SPEED_DEBOUNCE_MS
+	int "Speed sensor debounce (milliseconds)"
+	default 20
+	range 1 200
+	help
+	  Window during which edges following a pulse are ignored (reed bounce
+	  is typically under 2 ms). It also bounds the maximum measurable
+	  speed: 20 ms allows about 380 km/h with a 2.1 m wheel and one magnet.
+
+config EBIKE_SPEED_STOP_TIMEOUT_S
+	int "Wheel stopped timeout (seconds)"
+	default 3
+	range 1 30
+	help
+	  With no pulse for this long the speed drops to zero. 3 s means the
+	  lowest detectable speed is around 2.5 km/h with a 2.1 m wheel.
+
 # === IMU =====================================================================
 
 config EBIKE_IMU_POLL_MS
