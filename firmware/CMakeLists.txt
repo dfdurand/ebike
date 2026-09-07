@@ -6,6 +6,7 @@ project(ebike)
 
 target_sources(app PRIVATE
   src/main.c
+  src/modules/storage.c
   src/modules/speed.c
   src/modules/sensor.c
   src/modules/connectivity.c
