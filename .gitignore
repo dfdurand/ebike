@@ -1,0 +1,20 @@
+# Build artefacts
+firmware/build*/
+cloud/build/
+__pycache__/
+*.pyc
+
+# Local toolchain / device configuration (machine specific)
+firmware/local.conf
+
+# Credentials — never commit these
+firmware/certs/*
+!firmware/certs/README.md
+cloud/secrets/*
+!cloud/secrets/*.example
+cloud/*.pem
+cloud/onboard.csv
+
+# Python virtualenv
+.venv/
+cloud/.venv/
