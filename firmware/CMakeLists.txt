@@ -6,6 +6,7 @@ project(ebike)
 
 target_sources(app PRIVATE
   src/main.c
+  src/modules/wdt.c
   src/modules/diag.c
   src/modules/geofence.c
   src/modules/assistance.c

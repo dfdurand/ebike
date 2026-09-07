@@ -19,6 +19,49 @@ config EBIKE_PDN_IPV4_ONLY
 	  Diagnostic fallback: ask for IPv4 instead of IPv4v6, as some visited
 	  networks reject the IPV4V6 type. No effect when EBIKE_APN is empty.
 
+# === Watchdog ================================================================
+
+config EBIKE_WDT
+	bool "Hardware watchdog (task watchdog)"
+	default y
+	depends on TASK_WDT
+	help
+	  Fatal errors are already captured and reported on the next boot, but
+	  a silent hang — a thread stuck on a socket or a mutex — produces no
+	  fault at all and simply leaves the bike mute. The task watchdog
+	  watches the loops that must run continuously and restarts the board
+	  when one of them goes silent. The reset is reported on the next boot.
+
+config EBIKE_WDT_TIMEOUT_S
+	int "Watchdog timeout of the short loops (seconds)"
+	default 30
+	depends on EBIKE_WDT
+	range 5 600
+	help
+	  Applies to the state machine loop (wakes at least every 5 s) and to
+	  the system workqueue beat. Both only run bounded work, so 30 s is
+	  already very generous.
+
+config EBIKE_WDT_CLOUD_TIMEOUT_S
+	int "Watchdog timeout of the cloud workqueue (seconds)"
+	default 180
+	depends on EBIKE_WDT
+	range 30 3600
+	help
+	  Separate channel, deliberately permissive: aws_iot_connect() can
+	  legitimately block for tens of seconds (DNS plus TLS handshake on a
+	  degraded network). This bounds a DEFINITIVE hang of the cloud path
+	  without punishing a slow reconnection.
+
+config EBIKE_WDT_FEED_S
+	int "Watchdog beat period (seconds)"
+	default 5
+	depends on EBIKE_WDT
+	range 1 60
+	help
+	  Rate at which the channels are fed. Must stay well below the
+	  shortest timeout above.
+
 # === Geofence ================================================================
 
 config EBIKE_GEOFENCE_FLIP_GUARD_S
