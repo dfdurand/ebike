@@ -165,6 +165,28 @@ config EBIKE_GNSS_MAX_SPEED_ACC_KMH
 	  The status publishes the observed uncertainty (`sacc`, in 0.1 km/h)
 	  so the threshold can be set from real data.
 
+config EBIKE_AGNSS
+	bool "A-GNSS assistance from nRF Cloud (CoAP)"
+	default y
+	depends on NRF_CLOUD_COAP && NRF_CLOUD_AGNSS
+	help
+	  Answers modem assistance requests (NRF_MODEM_GNSS_EVT_AGNSS_REQ) by
+	  downloading ephemerides, almanac, time and position from nRF Cloud
+	  over CoAP. This is a one-shot fetch, independent of the AWS link, and
+	  it cuts the cold TTFF from minutes to seconds. Requires the board to
+	  be onboarded on nRF Cloud with credentials in
+	  CONFIG_NRF_CLOUD_SEC_TAG. Without them the fetch fails cleanly and
+	  GNSS falls back to an autonomous search.
+
+config EBIKE_AGNSS_STACK_SIZE
+	int "A-GNSS workqueue stack (bytes)"
+	default 4096
+	depends on EBIKE_AGNSS
+	help
+	  The fetch (CoAP/DTLS connection plus transfer) blocks, so it runs on
+	  its own workqueue instead of freezing the system one, which handles
+	  GNSS PVT frames and telemetry publication.
+
 # === IMU =====================================================================
 
 config EBIKE_IMU_POLL_MS
