@@ -19,6 +19,30 @@ config EBIKE_PDN_IPV4_ONLY
 	  Diagnostic fallback: ask for IPv4 instead of IPv4v6, as some visited
 	  networks reject the IPV4V6 type. No effect when EBIKE_APN is empty.
 
+# === Geofence ================================================================
+
+config EBIKE_GEOFENCE_FLIP_GUARD_S
+	int "Minimum delay between two zone state reversals (seconds)"
+	default 120
+	range 0 3600
+	help
+	  TEMPORAL debounce, on top of the spatial hysteresis (re-entry at 90%
+	  of the radius). The spatial guard is not enough when the bike is
+	  parked right on the boundary: GNSS accuracy makes the distance
+	  oscillate across the threshold, which produced four alerts in 82
+	  seconds on a stationary bike. This delays REVERSALS only: a genuine
+	  exit is not slowed down and the 60 s out-of-zone reminders continue.
+	  0 disables the guard.
+
+config EBIKE_GEOFENCE_EXIT_COUNT
+	int "Consecutive out-of-zone fixes before a geofence alert"
+	default 2
+	range 1 20
+	help
+	  Number of consecutive fixes seen outside (distance minus fix accuracy
+	  above the radius) before declaring an exit. Filters isolated position
+	  jumps; in continuous navigation two fixes add about one second.
+
 # === Shared runtime defaults (carried on CH_CONFIG) ==========================
 
 config EBIKE_PUBLISH_RIDING_S
