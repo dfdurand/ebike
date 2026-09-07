@@ -48,6 +48,17 @@ config EBIKE_GEOFENCE_RADIUS_M
 	  Allowed radius around the home point. A value pushed through the
 	  Device Shadow and persisted in NVS takes precedence.
 
+# === IMU =====================================================================
+
+config EBIKE_IMU_POLL_MS
+	int "Accelerometer polling period (milliseconds)"
+	default 1000
+	range 20 60000
+	help
+	  The lsm6ds0 driver has no trigger support, so the accelerometer is
+	  polled. Do not go below the sensor ODR
+	  (CONFIG_LSM6DS0_ACCEL_SAMPLING_RATE, 10 Hz by default, i.e. 100 ms).
+
 module = EBIKE
 module-str = eBike
 source "${ZEPHYR_BASE}/subsys/logging/Kconfig.template.log_config"

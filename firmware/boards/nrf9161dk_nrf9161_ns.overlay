@@ -6,7 +6,25 @@
  * MCUboot. This is required because the board is always programmed with
  * `west flash --recover` (APPROTECT re-locks on every boot), and only this
  * layout comes back up after a full erase.
+ *
+ * IMU: only the LSM6DS0 of the X-NUCLEO-IKS01A1 shield is declared. The other
+ * sensors on the shield (HTS221, LPS25HB, LIS3MDL) are unused, and declaring
+ * them would enable their drivers for nothing. Address 0x6b: SA0 tied to VDD
+ * by the shield default.
  */
 
 #include <samples/cellular/nrf91_no_bootloader_partitions.dtsi>
 #include <samples/cellular/nrf91_sram_partitions.dtsi>
+
+/ {
+	aliases {
+		accel0 = &lsm6ds0;
+	};
+};
+
+&arduino_i2c {
+	lsm6ds0: lsm6ds0@6b {
+		compatible = "st,lsm6ds0";
+		reg = <0x6b>;
+	};
+};
