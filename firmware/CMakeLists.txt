@@ -6,6 +6,7 @@ project(ebike)
 
 target_sources(app PRIVATE
   src/main.c
+  src/events/channels.c
 )
 
 target_include_directories(app PRIVATE src)

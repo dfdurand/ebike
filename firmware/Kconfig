@@ -2,6 +2,35 @@
 
 mainmenu "eBike firmware"
 
+# === Shared runtime defaults (carried on CH_CONFIG) ==========================
+
+config EBIKE_PUBLISH_RIDING_S
+	int "Publish interval while riding (seconds)"
+	default 60
+	range 10 3600
+	help
+	  Interval between MQTT publications when the bike is moving. Below
+	  60 s the LTE link stays in RRC connected almost permanently and
+	  starves the GNSS receiver.
+
+config EBIKE_MOTION_THRESHOLD_MG
+	int "IMU motion detection threshold (milli-g)"
+	default 150
+	range 10 2000
+	help
+	  Norm of the acceleration delta between two IMU polls above which
+	  movement is reported. Using the delta cancels gravity, so the test is
+	  insensitive to how the bike is oriented. 150 mg ignores sensor noise
+	  (~10-20 mg) while still catching someone handling the bike.
+
+config EBIKE_GEOFENCE_RADIUS_M
+	int "Default geofence radius (metres)"
+	default 500
+	range 20 1000000
+	help
+	  Allowed radius around the home point. A value pushed through the
+	  Device Shadow and persisted in NVS takes precedence.
+
 module = EBIKE
 module-str = eBike
 source "${ZEPHYR_BASE}/subsys/logging/Kconfig.template.log_config"
