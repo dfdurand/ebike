@@ -1,0 +1,9 @@
+# eBike project — custom Kconfig options.
+
+mainmenu "eBike firmware"
+
+module = EBIKE
+module-str = eBike
+source "${ZEPHYR_BASE}/subsys/logging/Kconfig.template.log_config"
+
+source "Kconfig.zephyr"

@@ -1,0 +1,12 @@
+/*
+ * eBike tracker — nRF9161-DK, non-secure (TF-M) variant.
+ *
+ * Bootloader-less flash layout plus the SRAM partitions used by the NCS
+ * cellular samples: the application boots straight into TF-M + NS, with no
+ * MCUboot. This is required because the board is always programmed with
+ * `west flash --recover` (APPROTECT re-locks on every boot), and only this
+ * layout comes back up after a full erase.
+ */
+
+#include <samples/cellular/nrf91_no_bootloader_partitions.dtsi>
+#include <samples/cellular/nrf91_sram_partitions.dtsi>
