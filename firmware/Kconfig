@@ -189,6 +189,81 @@ config EBIKE_PDN_IPV4_ONLY
 	  Diagnostic fallback: ask for IPv4 instead of IPv4v6, as some visited
 	  networks reject the IPV4V6 type. No effect when EBIKE_APN is empty.
 
+# === Status LEDs =============================================================
+
+config EBIKE_STATUS_LED
+	bool "Status LEDs on LED1 and LED2"
+	default y
+	depends on GPIO
+	help
+	  On battery the DK has no console: its UART goes through the interface
+	  MCU, which needs a USB host. The application LEDs are the only
+	  observable output left, and nothing else in the firmware uses them.
+
+	  LED1 carries liveness and the GNSS (brief blip = running without a
+	  fresh fix, even 1 Hz blink = running with one), LED2 carries the
+	  connection ladder (dark = no LTE, blink = attached, solid = connected
+	  to AWS IoT). That is enough to tell "the firmware is not running"
+	  from "the firmware runs but the modem never attaches" — the two
+	  failures that look identical on the dashboard.
+
+	  Only LED1 and LED2 are used: all four LEDs sit on Arduino header pins
+	  (LED1=D0, LED2=D1, LED3=D4, LED4=D5) and the X-NUCLEO-IKS01A1 shield
+	  holds D4/D5 down, so LED3 and LED4 stay dark even during the lamp
+	  test. See EBIKE_STATUS_LED_EXTENDED for a board without that shield.
+
+	  Costs a few mA continuously: disable for endurance runs where the
+	  diagnosis is no longer needed.
+
+config EBIKE_STATUS_LED_EXTENDED
+	bool "Also drive LED3 (cloud) and LED4 (GNSS fix)"
+	default n
+	depends on EBIKE_STATUS_LED
+	help
+	  Adds two dedicated LEDs: LED3 on while the MQTT connection is up,
+	  LED4 on while the GNSS fix is fresh. They duplicate what LED1 and
+	  LED2 already encode, in a form that needs no pattern reading.
+
+	  Off by default because LED3/LED4 are Arduino D4/D5, which a mounted
+	  IKS01A1 shield holds down: the firmware would be driving pins against
+	  the shield for LEDs that never light.
+
+config EBIKE_STATUS_LED_TICK_MS
+	int "Status LED slot period (milliseconds)"
+	default 100
+	depends on EBIKE_STATUS_LED
+	range 20 1000
+	help
+	  Duration of one slot of the blink patterns. A pattern is ten slots,
+	  so 100 ms gives a one-second cycle: a 100 ms blip, or an even 1 Hz
+	  blink — fast enough to read at a glance, slow enough to stay
+	  unambiguous.
+
+config EBIKE_STATUS_LED_LAMP_TEST_MS
+	int "Lamp test duration at boot (milliseconds, 0 = none)"
+	default 1000
+	depends on EBIKE_STATUS_LED
+	range 0 5000
+	help
+	  Every driven LED is lit together for this long when status_led_init()
+	  runs, then the normal display takes over.
+
+	  It is the earliest sign of life the board can give on battery, and it
+	  tells a dead indicator from a false one: every LED sits on an Arduino
+	  header pin, so a mounted shield can hold one down whatever the
+	  firmware does. A LED that misses the lamp test is unusable, not a
+	  state that never happened.
+
+config EBIKE_STATUS_LED_FIX_FRESH_S
+	int "Age beyond which the GNSS indication goes dark (seconds)"
+	default 120
+	depends on EBIKE_STATUS_LED
+	range 5 3600
+	help
+	  The fix indication holds while the last valid fix is younger than
+	  this. Beyond it the position is stale and the indication drops back —
+	  it must mean "the bike knows where it is now", not "it knew once".
+
 # === Watchdog ================================================================
 
 config EBIKE_WDT

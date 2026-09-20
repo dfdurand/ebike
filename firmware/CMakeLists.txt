@@ -14,6 +14,7 @@ target_sources(app PRIVATE
   src/modules/location.c
   src/modules/storage.c
   src/modules/speed.c
+  src/modules/status_led.c
   src/modules/sensor.c
   src/modules/connectivity.c
   src/events/channels.c
